@@ -1,4 +1,4 @@
-import { Plugin } from 'obsidian';
+import { Plugin, setIcon } from 'obsidian';
 import {
   DEFAULT_SETTINGS,
   JustVerticalTabsSettingTab,
@@ -12,6 +12,7 @@ const TAB_HEADER_INNER_SELECTOR = '.mod-root .workspace-tab-header-inner';
 const VIEW_ACTIONS_SELECTOR = '.mod-root .workspace-leaf.mod-active .view-actions';
 const TOGGLE_SELECTOR = '.sidebar-toggle-button.mod-right';
 const WORKSPACE_ROOT_SELECTOR = '.mod-root';
+const COLLAPSE_BUTTON_SELECTOR = '.jvt-collapse-tab-bar-button';
 
 type LoadedSettings = Partial<JustVerticalTabsSettings> & {
   sidebarTogglePlacement?: SidebarTogglePlacement | 'bottom';
@@ -35,10 +36,7 @@ export default class JustVerticalTabsPlugin extends Plugin {
     this.addCommand({
       id: 'toggle-collapse-tab-bar',
       name: 'Toggle collapsed tab bar',
-      callback: async () => {
-        this.settings.collapseTabBar = !this.settings.collapseTabBar;
-        await this.saveSettings();
-      },
+      callback: async () => this.toggleCollapseTabBar(),
     });
 
     this.ensureTabLabelObserver();
@@ -73,6 +71,7 @@ export default class JustVerticalTabsPlugin extends Plugin {
     this.disconnectTabLabelObserver();
 
     this.restoreToggle();
+    this.removeCollapseButton();
     document.body.classList.remove(
       'jvt-active',
       'jvt-collapse-tab-bar',
@@ -100,6 +99,11 @@ export default class JustVerticalTabsPlugin extends Plugin {
 
   async updateSide(side: string): Promise<void> {
     this.settings.side = this.normalizeSide(side);
+    await this.saveSettings();
+  }
+
+  async toggleCollapseTabBar(): Promise<void> {
+    this.settings.collapseTabBar = !this.settings.collapseTabBar;
     await this.saveSettings();
   }
 
@@ -261,12 +265,69 @@ export default class JustVerticalTabsPlugin extends Plugin {
   }
 
   private applyTogglePlacement(): void {
-    if (this.settings.sidebarTogglePlacement === 'header') {
-      this.moveToggleToHeader();
+    if (
+      this.settings.sidebarTogglePlacement === 'header'
+      || !this.settings.showCollapseTabBarButton
+    ) {
+      this.removeCollapseButton();
+      if (this.settings.sidebarTogglePlacement === 'header') {
+        this.moveToggleToHeader();
+      }
       return;
     }
 
     this.restoreToggle();
+    this.ensureCollapseButton();
+  }
+
+  private ensureCollapseButton(): void {
+    const tabContainer = document.querySelector<HTMLElement>(TAB_HEADER_CONTAINER_SELECTOR);
+    const toggle = document.querySelector<HTMLElement>(TOGGLE_SELECTOR);
+
+    if (!tabContainer || !toggle || toggle.parentElement !== tabContainer) {
+      this.removeCollapseButton();
+      return;
+    }
+
+    let button = tabContainer.querySelector<HTMLElement>(COLLAPSE_BUTTON_SELECTOR);
+    if (!button) {
+      const createdButton = document.createElement('button');
+      createdButton.type = 'button';
+      createdButton.className = 'clickable-icon jvt-collapse-tab-bar-button';
+      createdButton.addEventListener('click', () => {
+        void this.toggleCollapseTabBar();
+      });
+      button = createdButton;
+    }
+
+    this.updateCollapseButton(button);
+
+    if (button.parentElement !== tabContainer || button.nextElementSibling !== toggle) {
+      tabContainer.insertBefore(button, toggle);
+    }
+  }
+
+  private updateCollapseButton(button: HTMLElement): void {
+    const actionLabel = this.settings.collapseTabBar ? 'Expand tab bar' : 'Collapse tab bar';
+
+    button.setAttribute('aria-label', actionLabel);
+    button.setAttribute('title', actionLabel);
+    button.setAttribute('data-tooltip-position', this.settings.side === 'right' ? 'left' : 'right');
+    button.classList.toggle('is-collapsed', this.settings.collapseTabBar);
+
+    setIcon(button, this.getCollapseButtonIcon());
+  }
+
+  private getCollapseButtonIcon(): string {
+    if (this.settings.side === 'left') {
+      return this.settings.collapseTabBar ? 'chevrons-right' : 'chevrons-left';
+    }
+
+    return this.settings.collapseTabBar ? 'chevrons-left' : 'chevrons-right';
+  }
+
+  private removeCollapseButton(): void {
+    document.querySelector<HTMLElement>(COLLAPSE_BUTTON_SELECTOR)?.remove();
   }
 
   /** Place the right sidebar toggle in the active note header after More options. */

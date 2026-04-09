@@ -9,6 +9,7 @@ export interface JustVerticalTabsSettings {
   sidebarTogglePlacement: SidebarTogglePlacement;
   showTabIcons: boolean;
   collapseTabBar: boolean;
+  showCollapseTabBarButton: boolean;
 }
 
 export const DEFAULT_SETTINGS: JustVerticalTabsSettings = {
@@ -16,6 +17,7 @@ export const DEFAULT_SETTINGS: JustVerticalTabsSettings = {
   sidebarTogglePlacement: 'default',
   showTabIcons: true,
   collapseTabBar: false,
+  showCollapseTabBarButton: true,
 };
 
 export class JustVerticalTabsSettingTab extends PluginSettingTab {
@@ -79,6 +81,18 @@ export class JustVerticalTabsSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.collapseTabBar)
           .onChange(async (value) => {
             this.plugin.settings.collapseTabBar = value;
+            await this.plugin.saveSettings();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName('Show collapse button')
+      .setDesc('Show or hide the collapse/expand button that appears above the right sidebar toggle in the vertical tab bar.')
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings.showCollapseTabBarButton)
+          .onChange(async (value) => {
+            this.plugin.settings.showCollapseTabBarButton = value;
             await this.plugin.saveSettings();
           });
       });

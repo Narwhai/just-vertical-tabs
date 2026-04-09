@@ -140,6 +140,34 @@ body.jvt-active .mod-root .workspace-tab-header-spacer {
   display: none !important;
 }
 
+body.jvt-active .mod-root .workspace-tab-header-container > .jvt-collapse-tab-bar-button {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  padding: 2px 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  border-radius: var(--radius-s) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--icon-color) !important;
+}
+
+body.jvt-active .mod-root .workspace-tab-header-container > .jvt-collapse-tab-bar-button:hover {
+  background-color: var(--background-modifier-hover) !important;
+  color: var(--icon-color-hover, var(--icon-color)) !important;
+}
+
+body.jvt-active .mod-root .workspace-tab-header-container > .jvt-collapse-tab-bar-button svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+body.jvt-active.jvt-sidebar-toggle-bottom .mod-root .workspace-tab-header-container > .jvt-collapse-tab-bar-button {
+  margin-top: auto !important;
+}
+
 body.jvt-active.jvt-sidebar-toggle-bottom .mod-root .workspace-tab-header-container > .sidebar-toggle-button.mod-right {
   position: static !important;
   width: 100% !important;
@@ -147,7 +175,7 @@ body.jvt-active.jvt-sidebar-toggle-bottom .mod-root .workspace-tab-header-contai
   justify-content: center !important;
   padding: 2px 0 !important;
   margin: 0 !important;
-  margin-top: auto !important;
+  margin-top: 0 !important;
 }
 
 body.jvt-active.jvt-sidebar-toggle-bottom .mod-root .workspace-tab-header-container > .sidebar-toggle-button.mod-right .clickable-icon svg {
