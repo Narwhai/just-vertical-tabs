@@ -6,6 +6,9 @@ import {
   type TabBarSide,
 } from './settings';
 
+const TOGGLE_SELECTOR = '.mod-root .workspace-tab-header-container > .sidebar-toggle-button.mod-right';
+const VIEW_ACTIONS_SELECTOR = '.mod-root .workspace-leaf.mod-active .view-actions';
+
 export default class JustVerticalTabsPlugin extends Plugin {
   settings: JustVerticalTabsSettings = DEFAULT_SETTINGS;
 
@@ -16,20 +19,27 @@ export default class JustVerticalTabsPlugin extends Plugin {
     this.applySettings();
 
     this.addSettingTab(new JustVerticalTabsSettingTab(this.app, this));
+
+    this.registerEvent(
+      this.app.workspace.on('layout-change', () => {
+        if (this.settings.moveToggleToHeader) {
+          this.moveToggleToHeader();
+        }
+      })
+    );
   }
 
   onunload(): void {
+    this.restoreToggle();
     document.body.classList.remove('jvt-active', 'jvt-side-left', 'jvt-side-right');
   }
 
   async loadSettings(): Promise<void> {
     const loadedData = (await this.loadData()) as Partial<JustVerticalTabsSettings> | null;
-    const side = this.normalizeSide(loadedData?.side);
-
     this.settings = {
       ...DEFAULT_SETTINGS,
       ...loadedData,
-      side,
+      side: this.normalizeSide(loadedData?.side),
     };
   }
 
@@ -50,5 +60,37 @@ export default class JustVerticalTabsPlugin extends Plugin {
   private applySettings(): void {
     document.body.classList.remove('jvt-side-left', 'jvt-side-right');
     document.body.classList.add(`jvt-side-${this.settings.side}`);
+
+    if (this.settings.moveToggleToHeader) {
+      this.moveToggleToHeader();
+    } else {
+      this.restoreToggle();
+    }
+  }
+
+  /** Move the sidebar toggle button into the active leaf's view-actions bar. */
+  private moveToggleToHeader(): void {
+    const toggle = document.querySelector<HTMLElement>(TOGGLE_SELECTOR)
+      ?? document.querySelector<HTMLElement>('.view-actions > .sidebar-toggle-button.mod-right');
+
+    if (!toggle) return;
+
+    const viewActions = document.querySelector<HTMLElement>(VIEW_ACTIONS_SELECTOR);
+    if (!viewActions || toggle.parentElement === viewActions) return;
+
+    viewActions.insertBefore(toggle, viewActions.firstChild);
+  }
+
+  /** Move the sidebar toggle button back into the tab header container. */
+  private restoreToggle(): void {
+    const toggle = document.querySelector<HTMLElement>('.sidebar-toggle-button.mod-right');
+    if (!toggle) return;
+
+    const tabContainer = document.querySelector<HTMLElement>(
+      '.mod-root .workspace-tab-header-container'
+    );
+    if (!tabContainer || toggle.parentElement === tabContainer) return;
+
+    tabContainer.appendChild(toggle);
   }
 }

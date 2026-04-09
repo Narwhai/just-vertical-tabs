@@ -5,10 +5,12 @@ export type TabBarSide = 'left' | 'right';
 
 export interface JustVerticalTabsSettings {
   side: TabBarSide;
+  moveToggleToHeader: boolean;
 }
 
 export const DEFAULT_SETTINGS: JustVerticalTabsSettings = {
   side: 'right',
+  moveToggleToHeader: false,
 };
 
 export class JustVerticalTabsSettingTab extends PluginSettingTab {
@@ -34,6 +36,18 @@ export class JustVerticalTabsSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.side)
           .onChange(async (value) => {
             await this.plugin.updateSide(value);
+          });
+      });
+
+    new Setting(containerEl)
+      .setName('Move sidebar toggle to note header')
+      .setDesc('Move the right sidebar collapse button from the bottom of the tab bar into the note header, next to the other view action buttons.')
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings.moveToggleToHeader)
+          .onChange(async (value) => {
+            this.plugin.settings.moveToggleToHeader = value;
+            await this.plugin.saveSettings();
           });
       });
   }
