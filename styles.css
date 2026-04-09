@@ -127,7 +127,7 @@ body.jvt-active .mod-root .workspace-tab-header-spacer {
   display: none !important;
 }
 
-body.jvt-active .mod-root .workspace-tab-header-container > .sidebar-toggle-button {
+body.jvt-active.jvt-sidebar-toggle-bottom .mod-root .workspace-tab-header-container > .sidebar-toggle-button.mod-right {
   position: static !important;
   width: 100% !important;
   display: flex !important;
@@ -137,9 +137,13 @@ body.jvt-active .mod-root .workspace-tab-header-container > .sidebar-toggle-butt
   margin-top: auto !important;
 }
 
-body.jvt-active .mod-root .workspace-tab-header-container > .sidebar-toggle-button .clickable-icon svg {
+body.jvt-active.jvt-sidebar-toggle-bottom .mod-root .workspace-tab-header-container > .sidebar-toggle-button.mod-right .clickable-icon svg {
   width: 14px !important;
   height: 14px !important;
+}
+
+body.jvt-active.jvt-sidebar-toggle-bottom.jvt-side-right .mod-root .workspace-tab-header-container > .sidebar-toggle-button.mod-right {
+  margin-bottom: 28px !important;
 }
 
 body.jvt-active .mod-root .workspace-tabs.mod-top .workspace-tab-header-container::after {

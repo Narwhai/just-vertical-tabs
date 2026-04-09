@@ -2,15 +2,16 @@ import { App, PluginSettingTab, Setting } from 'obsidian';
 import JustVerticalTabsPlugin from './main';
 
 export type TabBarSide = 'left' | 'right';
+export type SidebarTogglePlacement = 'default' | 'header' | 'bottom';
 
 export interface JustVerticalTabsSettings {
   side: TabBarSide;
-  moveToggleToHeader: boolean;
+  sidebarTogglePlacement: SidebarTogglePlacement;
 }
 
 export const DEFAULT_SETTINGS: JustVerticalTabsSettings = {
   side: 'right',
-  moveToggleToHeader: false,
+  sidebarTogglePlacement: 'default',
 };
 
 export class JustVerticalTabsSettingTab extends PluginSettingTab {
@@ -40,13 +41,16 @@ export class JustVerticalTabsSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName('Move sidebar toggle to note header')
-      .setDesc('Move the right sidebar collapse button from the bottom of the tab bar into the note header, next to the other view action buttons.')
-      .addToggle((toggle) => {
-        toggle
-          .setValue(this.plugin.settings.moveToggleToHeader)
+      .setName('Right sidebar toggle placement')
+      .setDesc('Choose whether the right sidebar toggle stays in Obsidian\'s default location, moves into the note header after More options, or appears at the bottom of the vertical tab bar.')
+      .addDropdown((dropdown) => {
+        dropdown
+          .addOption('default', 'Default')
+          .addOption('header', 'Note header')
+          .addOption('bottom', 'Bottom of vertical tabs')
+          .setValue(this.plugin.settings.sidebarTogglePlacement)
           .onChange(async (value) => {
-            this.plugin.settings.moveToggleToHeader = value;
+            this.plugin.settings.sidebarTogglePlacement = this.plugin.normalizeSidebarTogglePlacementValue(value);
             await this.plugin.saveSettings();
           });
       });
