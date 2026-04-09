@@ -1,0 +1,211 @@
+/* ============================================================
+   Just Vertical Tabs
+   Moves the editor tab bar from horizontal (top) to vertical
+   on either the left or right side of the editor pane.
+   ============================================================ */
+
+/* --- 1. Shared vertical-tabs layout --- */
+body.jvt-active .mod-root .workspace-tabs {
+  flex-direction: row !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+body.jvt-active .mod-root .workspace-tab-header-container {
+  flex-direction: column !important;
+  width: var(--jvt-tab-width, 160px) !important;
+  min-width: var(--jvt-tab-width, 160px) !important;
+  max-width: var(--jvt-tab-width, 160px) !important;
+  height: auto !important;
+  flex-shrink: 0 !important;
+  border-bottom: none !important;
+  padding: 4px !important;
+  overflow: hidden;
+  align-items: stretch;
+  background-color: var(--background-secondary) !important;
+}
+
+body.jvt-active .mod-root .workspace-tab-header-container-inner {
+  flex-direction: column !important;
+  flex-wrap: nowrap !important;
+  gap: 1px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  width: 100% !important;
+  flex: 0 1 auto !important;
+  scrollbar-width: thin;
+}
+
+body.jvt-active .mod-root .workspace-tab-header {
+  width: 100% !important;
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
+  flex-basis: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 4px 8px !important;
+  border-radius: var(--radius-s) !important;
+  cursor: pointer;
+}
+
+body.jvt-active .mod-root .workspace-tab-header:hover {
+  background-color: var(--background-modifier-hover) !important;
+}
+
+body.jvt-active .mod-root .workspace-tab-header-inner {
+  width: 100% !important;
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 0 !important;
+  justify-content: flex-start !important;
+  text-align: left !important;
+}
+
+body.jvt-active .mod-root .workspace-tab-header-inner-title {
+  display: block !important;
+  flex: 1 1 auto !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  text-align: left !important;
+  font-size: var(--font-ui-small) !important;
+}
+
+body.jvt-active .mod-root .workspace-tab-header-inner-icon {
+  flex-shrink: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+body.jvt-active .mod-root .workspace-tab-header-inner-icon svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+body.jvt-active .mod-root .workspace-tab-header-inner-close-button {
+  flex-shrink: 0 !important;
+  display: none !important;
+  align-items: center !important;
+  margin-left: auto !important;
+  opacity: 0.6;
+}
+
+body.jvt-active .mod-root .workspace-tab-header-inner-close-button:hover {
+  opacity: 1;
+}
+
+body.jvt-active .mod-root .workspace-tab-header:hover .workspace-tab-header-inner-close-button {
+  display: flex !important;
+}
+
+body.jvt-active .mod-root .workspace-tab-header:hover .workspace-tab-header-status-container {
+  display: none !important;
+}
+
+body.jvt-active .mod-root .workspace-tab-header-status-container {
+  flex-shrink: 0 !important;
+}
+
+body.jvt-active .mod-root .workspace-tab-header-new-tab,
+body.jvt-active .mod-root .workspace-tab-header-tab-list {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+  padding: 2px 0 !important;
+  margin: 0 !important;
+}
+
+body.jvt-active .mod-root .workspace-tab-header-new-tab {
+  margin-top: 4px !important;
+}
+
+body.jvt-active .mod-root .workspace-tab-header-spacer {
+  display: none !important;
+}
+
+body.jvt-active .mod-root .workspace-tab-header-container > .sidebar-toggle-button {
+  position: static !important;
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+  padding: 2px 0 !important;
+  margin: 0 !important;
+  margin-top: auto !important;
+}
+
+body.jvt-active .mod-root .workspace-tab-header-container > .sidebar-toggle-button .clickable-icon svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+body.jvt-active .mod-root .workspace-tabs.mod-top .workspace-tab-header-container::after {
+  display: none !important;
+}
+
+body.jvt-active .mod-root .workspace-tab-container {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+body.jvt-active .mod-root .workspace-tab-container > .workspace-leaf {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+body.jvt-active .mod-root .workspace-tab-header.is-active {
+  background-color: var(--background-modifier-hover) !important;
+  box-shadow: none !important;
+}
+
+body.jvt-active .mod-root .workspace-tab-header.is-active::before,
+body.jvt-active .mod-root .workspace-tab-header.is-active::after {
+  display: none !important;
+}
+
+body.is-focused.jvt-active .mod-root .workspace-tab-header.is-active {
+  background-color: var(--tab-background-active) !important;
+  box-shadow: none !important;
+}
+
+body.jvt-active .mod-root .workspace-tab-header-container-inner::-webkit-scrollbar {
+  width: 3px;
+}
+
+body.jvt-active .mod-root .workspace-tab-header-container-inner::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-bg);
+  border-radius: 3px;
+}
+
+/* --- 2. Side-specific placement --- */
+body.jvt-active.jvt-side-left .mod-root .workspace-tab-header-container {
+  order: 0 !important;
+  border-right: 1px solid var(--divider-color);
+  border-left: none !important;
+}
+
+body.jvt-active.jvt-side-left .mod-root .workspace-leaf-resize-handle {
+  order: 1 !important;
+}
+
+body.jvt-active.jvt-side-left .mod-root .workspace-tab-container {
+  order: 2 !important;
+}
+
+body.jvt-active.jvt-side-right .mod-root .workspace-tab-container {
+  order: 0 !important;
+}
+
+body.jvt-active.jvt-side-right .mod-root .workspace-leaf-resize-handle {
+  order: 1 !important;
+}
+
+body.jvt-active.jvt-side-right .mod-root .workspace-tab-header-container {
+  order: 2 !important;
+  border-right: none !important;
+  border-left: 1px solid var(--divider-color);
+}

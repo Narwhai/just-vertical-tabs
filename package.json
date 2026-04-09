@@ -1,0 +1,27 @@
+{
+  "name": "just-vertical-tabs",
+  "version": "1.1.0",
+  "description": "Moves the tab bar from the top to a vertical orientation on the left or right side of the editor pane.",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc --noEmit --skipLibCheck && node esbuild.config.mjs production",
+    "lint": "eslint ."
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "obsidian": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.30",
+    "esbuild": "^0.25.5",
+    "eslint": "^9.39.4",
+    "eslint-plugin-obsidianmd": "^0.1.9",
+    "globals": "^16.4.0",
+    "jiti": "^2.6.1",
+    "tslib": "^2.8.1",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.35.1"
+  }
+}
