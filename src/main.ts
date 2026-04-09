@@ -8,8 +8,10 @@ import {
 } from './settings';
 
 const TAB_HEADER_CONTAINER_SELECTOR = '.mod-root .workspace-tab-header-container';
+const TAB_HEADER_INNER_SELECTOR = '.mod-root .workspace-tab-header-inner';
 const VIEW_ACTIONS_SELECTOR = '.mod-root .workspace-leaf.mod-active .view-actions';
 const TOGGLE_SELECTOR = '.sidebar-toggle-button.mod-right';
+const WORKSPACE_ROOT_SELECTOR = '.mod-root';
 
 type LoadedSettings = Partial<JustVerticalTabsSettings> & {
   sidebarTogglePlacement?: SidebarTogglePlacement | 'bottom';
@@ -19,6 +21,8 @@ type LoadedSettings = Partial<JustVerticalTabsSettings> & {
 export default class JustVerticalTabsPlugin extends Plugin {
   settings: JustVerticalTabsSettings = DEFAULT_SETTINGS;
   togglePlacementTimeouts: number[] = [];
+  collapsedLabelSyncTimeout: number | null = null;
+  tabLabelObserver: MutationObserver | null = null;
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -27,6 +31,18 @@ export default class JustVerticalTabsPlugin extends Plugin {
     this.applySettings();
 
     this.addSettingTab(new JustVerticalTabsSettingTab(this.app, this));
+
+    this.addCommand({
+      id: 'toggle-collapse-tab-bar',
+      name: 'Toggle collapsed tab bar',
+      callback: async () => {
+        this.settings.collapseTabBar = !this.settings.collapseTabBar;
+        await this.saveSettings();
+      },
+    });
+
+    this.ensureTabLabelObserver();
+    this.scheduleCollapsedLabelSync();
 
     this.registerDomEvent(document, 'click', (event) => {
       const target = event.target as HTMLElement | null;
@@ -44,17 +60,22 @@ export default class JustVerticalTabsPlugin extends Plugin {
 
     this.registerEvent(
       this.app.workspace.on('layout-change', () => {
+        this.ensureTabLabelObserver();
         this.scheduleTogglePlacement();
+        this.scheduleCollapsedLabelSync();
       })
     );
   }
 
   onunload(): void {
     this.clearTogglePlacementTimeouts();
+    this.clearCollapsedLabelSyncTimeout();
+    this.disconnectTabLabelObserver();
 
     this.restoreToggle();
     document.body.classList.remove(
       'jvt-active',
+      'jvt-collapse-tab-bar',
       'jvt-hide-tab-icons',
       'jvt-side-left',
       'jvt-side-right',
@@ -121,6 +142,7 @@ export default class JustVerticalTabsPlugin extends Plugin {
   private applySettings(): void {
     document.body.classList.remove('jvt-side-left', 'jvt-side-right');
     document.body.classList.add(`jvt-side-${this.settings.side}`);
+    document.body.classList.toggle('jvt-collapse-tab-bar', this.settings.collapseTabBar);
     document.body.classList.toggle('jvt-hide-tab-icons', !this.settings.showTabIcons);
     document.body.classList.toggle(
       'jvt-sidebar-toggle-bottom',
@@ -128,6 +150,7 @@ export default class JustVerticalTabsPlugin extends Plugin {
     );
 
     this.scheduleTogglePlacement();
+    this.scheduleCollapsedLabelSync();
   }
 
   private scheduleTogglePlacement(): void {
@@ -151,6 +174,90 @@ export default class JustVerticalTabsPlugin extends Plugin {
     }
 
     this.togglePlacementTimeouts = [];
+  }
+
+  private ensureTabLabelObserver(): void {
+    if (this.tabLabelObserver) {
+      return;
+    }
+
+    const workspaceRoot = document.querySelector<HTMLElement>(WORKSPACE_ROOT_SELECTOR);
+    if (!workspaceRoot) {
+      return;
+    }
+
+    this.tabLabelObserver = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.type === 'characterData' || mutation.type === 'childList') {
+          this.scheduleCollapsedLabelSync();
+          return;
+        }
+      }
+    });
+
+    this.tabLabelObserver.observe(workspaceRoot, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+    });
+  }
+
+  private disconnectTabLabelObserver(): void {
+    this.tabLabelObserver?.disconnect();
+    this.tabLabelObserver = null;
+  }
+
+  private scheduleCollapsedLabelSync(): void {
+    if (this.collapsedLabelSyncTimeout !== null) {
+      return;
+    }
+
+    this.collapsedLabelSyncTimeout = window.setTimeout(() => {
+      this.collapsedLabelSyncTimeout = null;
+      this.syncCollapsedLabels();
+    }, 16);
+  }
+
+  private clearCollapsedLabelSyncTimeout(): void {
+    if (this.collapsedLabelSyncTimeout === null) {
+      return;
+    }
+
+    window.clearTimeout(this.collapsedLabelSyncTimeout);
+    this.collapsedLabelSyncTimeout = null;
+  }
+
+  private syncCollapsedLabels(): void {
+    const tabHeaderInners = Array.from(
+      document.querySelectorAll<HTMLElement>(TAB_HEADER_INNER_SELECTOR)
+    );
+
+    for (const innerEl of tabHeaderInners) {
+      const titleEl = innerEl.querySelector<HTMLElement>('.workspace-tab-header-inner-title');
+      const rawTitle = titleEl?.textContent ?? innerEl.getAttribute('aria-label') ?? '';
+      innerEl.dataset.jvtCollapsedLabel = this.getCollapsedLabel(rawTitle);
+    }
+  }
+
+  private getCollapsedLabel(rawTitle: string): string {
+    const normalizedTitle = rawTitle.replace(/\s+/g, ' ').trim();
+    if (!normalizedTitle) {
+      return '?';
+    }
+
+    const words = normalizedTitle.split(' ').filter(Boolean);
+    if (words.length >= 2) {
+      const initials = words
+        .slice(0, 2)
+        .map((word) => Array.from(word)[0] ?? '')
+        .join('');
+
+      if (initials) {
+        return initials.toUpperCase();
+      }
+    }
+
+    return (Array.from(words[0] ?? normalizedTitle)[0] ?? '?').toUpperCase();
   }
 
   private applyTogglePlacement(): void {

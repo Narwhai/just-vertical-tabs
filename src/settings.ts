@@ -8,12 +8,14 @@ export interface JustVerticalTabsSettings {
   side: TabBarSide;
   sidebarTogglePlacement: SidebarTogglePlacement;
   showTabIcons: boolean;
+  collapseTabBar: boolean;
 }
 
 export const DEFAULT_SETTINGS: JustVerticalTabsSettings = {
   side: 'right',
   sidebarTogglePlacement: 'default',
   showTabIcons: true,
+  collapseTabBar: false,
 };
 
 export class JustVerticalTabsSettingTab extends PluginSettingTab {
@@ -65,6 +67,18 @@ export class JustVerticalTabsSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.showTabIcons)
           .onChange(async (value) => {
             this.plugin.settings.showTabIcons = value;
+            await this.plugin.saveSettings();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName('Collapse tab bar')
+      .setDesc('Collapse the vertical tab bar so each tab shows only its icon, or title initials when tab icons are hidden. You can also toggle this from the command palette.')
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings.collapseTabBar)
+          .onChange(async (value) => {
+            this.plugin.settings.collapseTabBar = value;
             await this.plugin.saveSettings();
           });
       });

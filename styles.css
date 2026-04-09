@@ -65,6 +65,11 @@ body.jvt-active .mod-root .workspace-tab-header-inner {
   text-align: left !important;
 }
 
+body.jvt-active .mod-root .workspace-tab-header-inner::before {
+  display: none !important;
+  content: attr(data-jvt-collapsed-label);
+}
+
 body.jvt-active .mod-root .workspace-tab-header-inner-title {
   display: block !important;
   flex: 1 1 auto !important;
@@ -191,6 +196,43 @@ body.jvt-active .mod-root .workspace-tab-header-container-inner::-webkit-scrollb
 body.jvt-active .mod-root .workspace-tab-header-container-inner::-webkit-scrollbar-thumb {
   background-color: var(--scrollbar-thumb-bg);
   border-radius: 3px;
+}
+
+body.jvt-active.jvt-collapse-tab-bar .mod-root .workspace-tab-header-container {
+  width: var(--jvt-collapsed-tab-width, 44px) !important;
+  min-width: var(--jvt-collapsed-tab-width, 44px) !important;
+  max-width: var(--jvt-collapsed-tab-width, 44px) !important;
+}
+
+body.jvt-active.jvt-collapse-tab-bar .mod-root .workspace-tab-header {
+  padding: 6px 4px !important;
+}
+
+body.jvt-active.jvt-collapse-tab-bar .mod-root .workspace-tab-header-inner {
+  justify-content: center !important;
+  gap: 0 !important;
+}
+
+body.jvt-active.jvt-collapse-tab-bar .mod-root .workspace-tab-header-inner-title,
+body.jvt-active.jvt-collapse-tab-bar .mod-root .workspace-tab-header-status-container,
+body.jvt-active.jvt-collapse-tab-bar .mod-root .workspace-tab-header-inner-close-button,
+body.jvt-active.jvt-collapse-tab-bar .mod-root .workspace-tab-header:hover .workspace-tab-header-inner-close-button {
+  display: none !important;
+}
+
+body.jvt-active.jvt-collapse-tab-bar .mod-root .workspace-tab-header-inner-icon {
+  margin: 0 auto !important;
+}
+
+body.jvt-active.jvt-collapse-tab-bar.jvt-hide-tab-icons .mod-root .workspace-tab-header-inner::before {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 1.25rem !important;
+  font-size: var(--font-ui-small) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 /* --- 2. Side-specific placement --- */
