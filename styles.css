@@ -86,6 +86,14 @@ body.jvt-active .mod-root .workspace-tab-header-inner-icon svg {
   height: 14px !important;
 }
 
+body.jvt-active.jvt-hide-tab-icons .mod-root .workspace-tab-header-inner {
+  gap: 0 !important;
+}
+
+body.jvt-active.jvt-hide-tab-icons .mod-root .workspace-tab-header-inner-icon {
+  display: none !important;
+}
+
 body.jvt-active .mod-root .workspace-tab-header-inner-close-button {
   flex-shrink: 0 !important;
   display: none !important;

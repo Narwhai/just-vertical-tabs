@@ -55,6 +55,7 @@ export default class JustVerticalTabsPlugin extends Plugin {
     this.restoreToggle();
     document.body.classList.remove(
       'jvt-active',
+      'jvt-hide-tab-icons',
       'jvt-side-left',
       'jvt-side-right',
       'jvt-sidebar-toggle-bottom'
@@ -120,6 +121,7 @@ export default class JustVerticalTabsPlugin extends Plugin {
   private applySettings(): void {
     document.body.classList.remove('jvt-side-left', 'jvt-side-right');
     document.body.classList.add(`jvt-side-${this.settings.side}`);
+    document.body.classList.toggle('jvt-hide-tab-icons', !this.settings.showTabIcons);
     document.body.classList.toggle(
       'jvt-sidebar-toggle-bottom',
       this.settings.sidebarTogglePlacement === 'bottom'

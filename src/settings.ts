@@ -7,11 +7,13 @@ export type SidebarTogglePlacement = 'default' | 'header' | 'bottom';
 export interface JustVerticalTabsSettings {
   side: TabBarSide;
   sidebarTogglePlacement: SidebarTogglePlacement;
+  showTabIcons: boolean;
 }
 
 export const DEFAULT_SETTINGS: JustVerticalTabsSettings = {
   side: 'right',
   sidebarTogglePlacement: 'default',
+  showTabIcons: true,
 };
 
 export class JustVerticalTabsSettingTab extends PluginSettingTab {
@@ -51,6 +53,18 @@ export class JustVerticalTabsSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.sidebarTogglePlacement)
           .onChange(async (value) => {
             this.plugin.settings.sidebarTogglePlacement = this.plugin.normalizeSidebarTogglePlacementValue(value);
+            await this.plugin.saveSettings();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName('Show tab icons')
+      .setDesc('Show or hide the file-type icons displayed to the left of tab titles.')
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings.showTabIcons)
+          .onChange(async (value) => {
+            this.plugin.settings.showTabIcons = value;
             await this.plugin.saveSettings();
           });
       });
