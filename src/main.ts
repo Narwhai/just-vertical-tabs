@@ -296,9 +296,9 @@ export default class JustVerticalTabsPlugin extends Plugin {
     this.originalGetTabInsertLocation = originalMethod as (this: TabGroupLike, clientX: number) => TabInsertLocation;
     this.patchedTabGroupPrototype = prototype;
 
-    const plugin = this;
+    const getPatchedTabInsertLocation = this.getPatchedTabInsertLocation.bind(this);
     prototype.getTabInsertLocation = function getTabInsertLocationPatched(this: TabGroupLike, clientX: number) {
-      return plugin.getPatchedTabInsertLocation(this, clientX);
+      return getPatchedTabInsertLocation(this, clientX);
     };
   }
 
@@ -335,7 +335,7 @@ export default class JustVerticalTabsPlugin extends Plugin {
     ) => string;
     this.patchedWorkspacePrototype = prototype;
 
-    const plugin = this;
+    const getPatchedDropDirection = this.getPatchedDropDirection.bind(this);
     prototype.getDropDirection = function getDropDirectionPatched(
       this: WorkspaceLike,
       event: DragLikeEvent,
@@ -343,7 +343,7 @@ export default class JustVerticalTabsPlugin extends Plugin {
       directions: string[] | null | undefined,
       target: unknown
     ) {
-      return plugin.getPatchedDropDirection(this, event, rect, directions, target);
+      return getPatchedDropDirection(this, event, rect, directions, target);
     };
   }
 

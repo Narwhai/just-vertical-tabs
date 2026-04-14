@@ -48,7 +48,7 @@ export class JustVerticalTabsSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Right sidebar toggle placement')
-      .setDesc('Choose whether the right sidebar toggle stays in Obsidian\'s default location, moves into the note header after More options, or appears at the bottom of the vertical tab bar.')
+      .setDesc('Choose whether the right sidebar toggle stays in Obsidian\'s default location, moves into the note header after more options, or appears at the bottom of the vertical tab bar.')
       .addDropdown((dropdown) => {
         dropdown
           .addOption('default', 'Default')
