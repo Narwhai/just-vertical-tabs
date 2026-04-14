@@ -192,7 +192,7 @@ export default class JustVerticalTabsPlugin extends Plugin {
   }
 
   normalizeSidebarTogglePlacementValue(
-    placement: SidebarTogglePlacement | undefined
+    placement: string | undefined
   ): SidebarTogglePlacement {
     if (placement === 'header') {
       return 'header';
