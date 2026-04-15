@@ -93,9 +93,10 @@ export default class JustVerticalTabsPlugin extends Plugin {
   };
 
   /**
-   * Debounced toggle placement — replaces the 5-timeout waterfall.
-   * Leading edge ensures immediate first call; trailing edge catches
-   * animations that settle later. 500 ms covers Obsidian sidebar animations.
+   * Debounced trailing-edge toggle placement — catches sidebar animations
+   * that settle after the initial call. 500 ms covers Obsidian animations.
+   * Always pair with a direct `applyTogglePlacement()` call for immediate
+   * feedback via {@link scheduleTogglePlacement}.
    */
   private readonly debouncedTogglePlacement: Debouncer<[], void> = debounce(
     () => this.applyTogglePlacement(),
@@ -140,14 +141,14 @@ export default class JustVerticalTabsPlugin extends Plugin {
     this.registerDomEvent(document, 'click', (event) => {
       const target = event.target as HTMLElement | null;
       if (target?.closest(TOGGLE_SELECTOR)) {
-        this.debouncedTogglePlacement();
+        this.scheduleTogglePlacement();
       }
     });
 
     this.registerDomEvent(document, 'transitionend', (event) => {
       const target = event.target as HTMLElement | null;
       if (target?.closest('.workspace-split.mod-right-split')) {
-        this.debouncedTogglePlacement();
+        this.scheduleTogglePlacement();
       }
     });
 
@@ -254,7 +255,7 @@ export default class JustVerticalTabsPlugin extends Plugin {
 
     this.isVerticalActive = document.body.classList.contains('jvt-active');
 
-    this.debouncedTogglePlacement();
+    this.scheduleTogglePlacement();
     this.debouncedCollapsedLabelSync();
   }
 
@@ -262,8 +263,17 @@ export default class JustVerticalTabsPlugin extends Plugin {
   private handleLayoutChange(): void {
     this.ensureTabLabelObserver();
     this.patchWorkspaceDragBehavior();
-    this.debouncedTogglePlacement();
+    this.scheduleTogglePlacement();
     this.debouncedCollapsedLabelSync();
+  }
+
+  /**
+   * Apply toggle placement immediately (leading edge) and schedule a
+   * debounced trailing call to catch animations that settle later.
+   */
+  private scheduleTogglePlacement(): void {
+    this.applyTogglePlacement();
+    this.debouncedTogglePlacement();
   }
 
   private registerDragTracking(): void {
@@ -291,15 +301,9 @@ export default class JustVerticalTabsPlugin extends Plugin {
       };
     };
 
-    window.addEventListener('dragover', updateDragPosition, true);
-    window.addEventListener('drop', updateDragPositionOnDrop, true);
-    window.addEventListener('dragend', clearDragPosition, true);
-
-    this.register(() => {
-      window.removeEventListener('dragover', updateDragPosition, true);
-      window.removeEventListener('drop', updateDragPositionOnDrop, true);
-      window.removeEventListener('dragend', clearDragPosition, true);
-    });
+    this.registerDomEvent(window, 'dragover', updateDragPosition, { capture: true });
+    this.registerDomEvent(window, 'drop', updateDragPositionOnDrop, { capture: true });
+    this.registerDomEvent(window, 'dragend', clearDragPosition, { capture: true });
   }
 
   private patchWorkspaceDragBehavior(): void {
