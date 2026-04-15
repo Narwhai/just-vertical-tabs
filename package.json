@@ -9,7 +9,7 @@
     "build": "tsc --noEmit --skipLibCheck && node esbuild.config.mjs production",
     "lint": "eslint ."
   },
-  "license": "UNLICENSED",
+  "license": "MIT",
   "dependencies": {
     "obsidian": "latest"
   },
