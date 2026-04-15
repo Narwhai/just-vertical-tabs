@@ -1,4 +1,4 @@
-import { Plugin, setIcon } from 'obsidian';
+import { Plugin, debounce, setIcon, type Debouncer } from 'obsidian';
 import {
   DEFAULT_SETTINGS,
   JustVerticalTabsSettingTab,
@@ -11,8 +11,10 @@ const TAB_HEADER_CONTAINER_SELECTOR = '.mod-root .workspace-tab-header-container
 const TAB_HEADER_INNER_SELECTOR = '.mod-root .workspace-tab-header-inner';
 const VIEW_ACTIONS_SELECTOR = '.mod-root .workspace-leaf.mod-active .view-actions';
 const TOGGLE_SELECTOR = '.sidebar-toggle-button.mod-right';
-const WORKSPACE_ROOT_SELECTOR = '.mod-root';
 const COLLAPSE_BUTTON_SELECTOR = '.jvt-collapse-tab-bar-button';
+
+/** Throttle interval for dragover position tracking (ms). */
+const DRAG_THROTTLE_MS = 16;
 
 type LoadedSettings = Partial<JustVerticalTabsSettings> & {
   sidebarTogglePlacement?: SidebarTogglePlacement | 'bottom';
@@ -65,10 +67,12 @@ type WorkspaceLike = {
 
 export default class JustVerticalTabsPlugin extends Plugin {
   settings: JustVerticalTabsSettings = DEFAULT_SETTINGS;
-  togglePlacementTimeouts: number[] = [];
-  collapsedLabelSyncTimeout: number | null = null;
   tabLabelObserver: MutationObserver | null = null;
+  /** The element currently being observed by tabLabelObserver. */
+  tabLabelObserverTarget: HTMLElement | null = null;
   lastDragPosition: DragPosition | null = null;
+  /** Timestamp of the last accepted dragover position update (for throttling). */
+  lastDragUpdateTime = 0;
   patchedTabGroupPrototype: Record<string, unknown> | null = null;
   originalGetTabInsertLocation: ((this: TabGroupLike, clientX: number) => TabInsertLocation) | null = null;
   patchedWorkspacePrototype: Record<string, unknown> | null = null;
@@ -81,11 +85,43 @@ export default class JustVerticalTabsPlugin extends Plugin {
       target: unknown
     ) => string)
     | null = null;
+  /** Cached vertical-mode state, updated on settings change. */
+  isVerticalActive = false;
+  /** Bound handler for the collapse button click, stored for cleanup. */
+  private readonly collapseButtonClickHandler = (): void => {
+    void this.toggleCollapseTabBar();
+  };
+
+  /**
+   * Debounced toggle placement — replaces the 5-timeout waterfall.
+   * Leading edge ensures immediate first call; trailing edge catches
+   * animations that settle later. 500 ms covers Obsidian sidebar animations.
+   */
+  private readonly debouncedTogglePlacement: Debouncer<[], void> = debounce(
+    () => this.applyTogglePlacement(),
+    500,
+    true,
+  );
+
+  /** Debounced collapsed-label sync (16 ms, leading). */
+  private readonly debouncedCollapsedLabelSync: Debouncer<[], void> = debounce(
+    () => this.syncCollapsedLabels(),
+    16,
+    true,
+  );
+
+  /** Debounced layout-change handler to coalesce rapid-fire events (50 ms). */
+  private readonly debouncedLayoutChange: Debouncer<[], void> = debounce(
+    () => this.handleLayoutChange(),
+    50,
+    true,
+  );
 
   async onload(): Promise<void> {
     await this.loadSettings();
 
     document.body.classList.add('jvt-active');
+    this.isVerticalActive = true;
     this.applySettings();
 
     this.addSettingTab(new JustVerticalTabsSettingTab(this.app, this));
@@ -99,38 +135,39 @@ export default class JustVerticalTabsPlugin extends Plugin {
     this.ensureTabLabelObserver();
     this.registerDragTracking();
     this.patchWorkspaceDragBehavior();
-    this.scheduleCollapsedLabelSync();
+    this.debouncedCollapsedLabelSync();
 
     this.registerDomEvent(document, 'click', (event) => {
       const target = event.target as HTMLElement | null;
       if (target?.closest(TOGGLE_SELECTOR)) {
-        this.scheduleTogglePlacement();
+        this.debouncedTogglePlacement();
       }
     });
 
     this.registerDomEvent(document, 'transitionend', (event) => {
       const target = event.target as HTMLElement | null;
       if (target?.closest('.workspace-split.mod-right-split')) {
-        this.scheduleTogglePlacement();
+        this.debouncedTogglePlacement();
       }
     });
 
     this.registerEvent(
       this.app.workspace.on('layout-change', () => {
-        this.ensureTabLabelObserver();
-        this.patchWorkspaceDragBehavior();
-        this.scheduleTogglePlacement();
-        this.scheduleCollapsedLabelSync();
+        this.debouncedLayoutChange();
       })
     );
+
+    // Cancel all debouncers on unload.
+    this.register(() => this.debouncedTogglePlacement.cancel());
+    this.register(() => this.debouncedCollapsedLabelSync.cancel());
+    this.register(() => this.debouncedLayoutChange.cancel());
   }
 
   onunload(): void {
-    this.clearTogglePlacementTimeouts();
-    this.clearCollapsedLabelSyncTimeout();
     this.disconnectTabLabelObserver();
     this.restoreWorkspaceDragBehavior();
     this.lastDragPosition = null;
+    this.isVerticalActive = false;
 
     this.restoreToggle();
     this.removeCollapseButton();
@@ -215,35 +252,27 @@ export default class JustVerticalTabsPlugin extends Plugin {
       this.settings.sidebarTogglePlacement === 'bottom'
     );
 
-    this.scheduleTogglePlacement();
-    this.scheduleCollapsedLabelSync();
+    this.isVerticalActive = document.body.classList.contains('jvt-active');
+
+    this.debouncedTogglePlacement();
+    this.debouncedCollapsedLabelSync();
   }
 
-  private scheduleTogglePlacement(): void {
-    this.applyTogglePlacement();
-
-    this.clearTogglePlacementTimeouts();
-
-    for (const delay of [75, 250, 500, 1000, 1500]) {
-      const timeoutId = window.setTimeout(() => {
-        this.togglePlacementTimeouts = this.togglePlacementTimeouts.filter((id) => id !== timeoutId);
-        this.applyTogglePlacement();
-      }, delay);
-
-      this.togglePlacementTimeouts.push(timeoutId);
-    }
-  }
-
-  private clearTogglePlacementTimeouts(): void {
-    for (const timeoutId of this.togglePlacementTimeouts) {
-      window.clearTimeout(timeoutId);
-    }
-
-    this.togglePlacementTimeouts = [];
+  /** Coalesced handler for workspace layout-change events. */
+  private handleLayoutChange(): void {
+    this.ensureTabLabelObserver();
+    this.patchWorkspaceDragBehavior();
+    this.debouncedTogglePlacement();
+    this.debouncedCollapsedLabelSync();
   }
 
   private registerDragTracking(): void {
     const updateDragPosition = (event: DragEvent): void => {
+      const now = performance.now();
+      if (now - this.lastDragUpdateTime < DRAG_THROTTLE_MS) {
+        return;
+      }
+      this.lastDragUpdateTime = now;
       this.lastDragPosition = {
         x: event.clientX,
         y: event.clientY,
@@ -254,13 +283,21 @@ export default class JustVerticalTabsPlugin extends Plugin {
       this.lastDragPosition = null;
     };
 
+    // Always capture the latest position on drop so insert location is accurate.
+    const updateDragPositionOnDrop = (event: DragEvent): void => {
+      this.lastDragPosition = {
+        x: event.clientX,
+        y: event.clientY,
+      };
+    };
+
     window.addEventListener('dragover', updateDragPosition, true);
-    window.addEventListener('drop', updateDragPosition, true);
+    window.addEventListener('drop', updateDragPositionOnDrop, true);
     window.addEventListener('dragend', clearDragPosition, true);
 
     this.register(() => {
       window.removeEventListener('dragover', updateDragPosition, true);
-      window.removeEventListener('drop', updateDragPosition, true);
+      window.removeEventListener('drop', updateDragPositionOnDrop, true);
       window.removeEventListener('dragend', clearDragPosition, true);
     });
   }
@@ -494,10 +531,13 @@ export default class JustVerticalTabsPlugin extends Plugin {
       && typeof candidate.getTabInsertLocation === 'function';
   }
 
+  /**
+   * Check whether a value is a tab group rendered in vertical mode.
+   * Uses the cached `isVerticalActive` flag instead of calling
+   * `getComputedStyle` on every drag event.
+   */
   private isVerticalTabGroup(value: unknown): value is TabGroupLike {
-    return this.isTabGroupLike(value)
-      && document.body.classList.contains('jvt-active')
-      && getComputedStyle(value.tabHeaderContainerEl).flexDirection === 'column';
+    return this.isTabGroupLike(value) && this.isVerticalActive;
   }
 
   private isPointInsideElement(clientX: number, clientY: number, element: HTMLElement): boolean {
@@ -508,57 +548,55 @@ export default class JustVerticalTabsPlugin extends Plugin {
       && clientY <= rect.bottom;
   }
 
+  /**
+   * Ensure a MutationObserver is watching all tab header containers for
+   * label changes. Scoped narrowly to avoid firing on editor content changes.
+   * Reconnects if the previously observed elements are no longer in the DOM.
+   */
   private ensureTabLabelObserver(): void {
-    if (this.tabLabelObserver) {
+    const tabContainer = document.querySelector<HTMLElement>(TAB_HEADER_CONTAINER_SELECTOR);
+
+    // If there's no container yet, clean up any stale observer.
+    if (!tabContainer) {
+      this.disconnectTabLabelObserver();
       return;
     }
 
-    const workspaceRoot = document.querySelector<HTMLElement>(WORKSPACE_ROOT_SELECTOR);
-    if (!workspaceRoot) {
+    // If the observer target is still the same in-DOM element, keep it.
+    if (
+      this.tabLabelObserver
+      && this.tabLabelObserverTarget === tabContainer
+      && tabContainer.isConnected
+    ) {
       return;
     }
 
-    this.tabLabelObserver = new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        if (mutation.type === 'characterData' || mutation.type === 'childList') {
-          this.scheduleCollapsedLabelSync();
-          return;
-        }
-      }
+    // Target changed or was removed — reconnect.
+    this.disconnectTabLabelObserver();
+
+    this.tabLabelObserver = new MutationObserver(() => {
+      this.debouncedCollapsedLabelSync();
     });
 
-    this.tabLabelObserver.observe(workspaceRoot, {
+    this.tabLabelObserver.observe(tabContainer, {
       subtree: true,
       childList: true,
       characterData: true,
     });
+
+    this.tabLabelObserverTarget = tabContainer;
   }
 
   private disconnectTabLabelObserver(): void {
     this.tabLabelObserver?.disconnect();
     this.tabLabelObserver = null;
+    this.tabLabelObserverTarget = null;
   }
 
-  private scheduleCollapsedLabelSync(): void {
-    if (this.collapsedLabelSyncTimeout !== null) {
-      return;
-    }
-
-    this.collapsedLabelSyncTimeout = window.setTimeout(() => {
-      this.collapsedLabelSyncTimeout = null;
-      this.syncCollapsedLabels();
-    }, 16);
-  }
-
-  private clearCollapsedLabelSyncTimeout(): void {
-    if (this.collapsedLabelSyncTimeout === null) {
-      return;
-    }
-
-    window.clearTimeout(this.collapsedLabelSyncTimeout);
-    this.collapsedLabelSyncTimeout = null;
-  }
-
+  /**
+   * Sync collapsed labels on all tab headers.
+   * Dirty-checks each label to avoid unnecessary DOM writes.
+   */
   private syncCollapsedLabels(): void {
     const tabHeaderInners = Array.from(
       document.querySelectorAll<HTMLElement>(TAB_HEADER_INNER_SELECTOR)
@@ -567,7 +605,12 @@ export default class JustVerticalTabsPlugin extends Plugin {
     for (const innerEl of tabHeaderInners) {
       const titleEl = innerEl.querySelector<HTMLElement>('.workspace-tab-header-inner-title');
       const rawTitle = titleEl?.textContent ?? innerEl.getAttribute('aria-label') ?? '';
-      innerEl.dataset.jvtCollapsedLabel = this.getCollapsedLabel(rawTitle);
+      const newLabel = this.getCollapsedLabel(rawTitle);
+
+      // Only write if the value actually changed.
+      if (innerEl.dataset.jvtCollapsedLabel !== newLabel) {
+        innerEl.dataset.jvtCollapsedLabel = newLabel;
+      }
     }
   }
 
@@ -622,9 +665,7 @@ export default class JustVerticalTabsPlugin extends Plugin {
       const createdButton = document.createElement('button');
       createdButton.type = 'button';
       createdButton.className = 'clickable-icon jvt-collapse-tab-bar-button';
-      createdButton.addEventListener('click', () => {
-        void this.toggleCollapseTabBar();
-      });
+      createdButton.addEventListener('click', this.collapseButtonClickHandler);
       button = createdButton;
     }
 
@@ -655,7 +696,11 @@ export default class JustVerticalTabsPlugin extends Plugin {
   }
 
   private removeCollapseButton(): void {
-    document.querySelector<HTMLElement>(COLLAPSE_BUTTON_SELECTOR)?.remove();
+    const button = document.querySelector<HTMLElement>(COLLAPSE_BUTTON_SELECTOR);
+    if (button) {
+      button.removeEventListener('click', this.collapseButtonClickHandler);
+      button.remove();
+    }
   }
 
   /** Place the right sidebar toggle in the active note header after More options. */
