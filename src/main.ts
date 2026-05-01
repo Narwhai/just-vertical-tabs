@@ -121,7 +121,7 @@ export default class JustVerticalTabsPlugin extends Plugin {
   async onload(): Promise<void> {
     await this.loadSettings();
 
-    document.body.classList.add('jvt-active');
+    activeDocument.body.classList.add('jvt-active');
     this.isVerticalActive = true;
     this.applySettings();
 
@@ -138,14 +138,14 @@ export default class JustVerticalTabsPlugin extends Plugin {
     this.patchWorkspaceDragBehavior();
     this.debouncedCollapsedLabelSync();
 
-    this.registerDomEvent(document, 'click', (event) => {
+    this.registerDomEvent(activeDocument, 'click', (event) => {
       const target = event.target as HTMLElement | null;
       if (target?.closest(TOGGLE_SELECTOR)) {
         this.scheduleTogglePlacement();
       }
     });
 
-    this.registerDomEvent(document, 'transitionend', (event) => {
+    this.registerDomEvent(activeDocument, 'transitionend', (event) => {
       const target = event.target as HTMLElement | null;
       if (target?.closest('.workspace-split.mod-right-split')) {
         this.scheduleTogglePlacement();
@@ -172,7 +172,7 @@ export default class JustVerticalTabsPlugin extends Plugin {
 
     this.restoreToggle();
     this.removeCollapseButton();
-    document.body.classList.remove(
+    activeDocument.body.classList.remove(
       'jvt-active',
       'jvt-collapse-tab-bar',
       'jvt-hide-tab-icons',
@@ -244,16 +244,16 @@ export default class JustVerticalTabsPlugin extends Plugin {
   }
 
   private applySettings(): void {
-    document.body.classList.remove('jvt-side-left', 'jvt-side-right');
-    document.body.classList.add(`jvt-side-${this.settings.side}`);
-    document.body.classList.toggle('jvt-collapse-tab-bar', this.settings.collapseTabBar);
-    document.body.classList.toggle('jvt-hide-tab-icons', !this.settings.showTabIcons);
-    document.body.classList.toggle(
+    activeDocument.body.classList.remove('jvt-side-left', 'jvt-side-right');
+    activeDocument.body.classList.add(`jvt-side-${this.settings.side}`);
+    activeDocument.body.classList.toggle('jvt-collapse-tab-bar', this.settings.collapseTabBar);
+    activeDocument.body.classList.toggle('jvt-hide-tab-icons', !this.settings.showTabIcons);
+    activeDocument.body.classList.toggle(
       'jvt-sidebar-toggle-bottom',
       this.settings.sidebarTogglePlacement === 'bottom'
     );
 
-    this.isVerticalActive = document.body.classList.contains('jvt-active');
+    this.isVerticalActive = activeDocument.body.classList.contains('jvt-active');
 
     this.scheduleTogglePlacement();
     this.debouncedCollapsedLabelSync();
@@ -436,7 +436,7 @@ export default class JustVerticalTabsPlugin extends Plugin {
     const containerRect = tabGroup.tabHeaderContainerEl.getBoundingClientRect();
     const headers = tabGroup.children
       .map((child) => child.tabHeaderEl)
-      .filter((headerEl): headerEl is HTMLElement => headerEl instanceof HTMLElement);
+      .filter((headerEl): headerEl is HTMLElement => headerEl.instanceOf(HTMLElement));
 
     if (headers.length === 0) {
       return {
@@ -531,7 +531,7 @@ export default class JustVerticalTabsPlugin extends Plugin {
     const candidate = value as TabGroupLike | null | undefined;
     return !!candidate
       && Array.isArray(candidate.children)
-      && candidate.tabHeaderContainerEl instanceof HTMLElement
+      && candidate.tabHeaderContainerEl.instanceOf(HTMLElement)
       && typeof candidate.getTabInsertLocation === 'function';
   }
 
@@ -558,7 +558,7 @@ export default class JustVerticalTabsPlugin extends Plugin {
    * Reconnects if the previously observed elements are no longer in the DOM.
    */
   private ensureTabLabelObserver(): void {
-    const tabContainer = document.querySelector<HTMLElement>(TAB_HEADER_CONTAINER_SELECTOR);
+    const tabContainer = activeDocument.querySelector<HTMLElement>(TAB_HEADER_CONTAINER_SELECTOR);
 
     // If there's no container yet, clean up any stale observer.
     if (!tabContainer) {
@@ -603,7 +603,7 @@ export default class JustVerticalTabsPlugin extends Plugin {
    */
   private syncCollapsedLabels(): void {
     const tabHeaderInners = Array.from(
-      document.querySelectorAll<HTMLElement>(TAB_HEADER_INNER_SELECTOR)
+      activeDocument.querySelectorAll<HTMLElement>(TAB_HEADER_INNER_SELECTOR)
     );
 
     for (const innerEl of tabHeaderInners) {
@@ -656,19 +656,20 @@ export default class JustVerticalTabsPlugin extends Plugin {
   }
 
   private ensureCollapseButton(): void {
-    const tabContainer = document.querySelector<HTMLElement>(TAB_HEADER_CONTAINER_SELECTOR);
-    const toggle = document.querySelector<HTMLElement>(TOGGLE_SELECTOR);
+    const tabContainer = activeDocument.querySelector<HTMLElement>(TAB_HEADER_CONTAINER_SELECTOR);
+    const toggle = activeDocument.querySelector<HTMLElement>(TOGGLE_SELECTOR);
 
     if (!tabContainer || !toggle || toggle.parentElement !== tabContainer) {
       this.removeCollapseButton();
       return;
     }
 
-    let button = tabContainer.querySelector<HTMLElement>(COLLAPSE_BUTTON_SELECTOR);
+    let button = tabContainer.querySelector<HTMLButtonElement>(COLLAPSE_BUTTON_SELECTOR);
     if (!button) {
-      const createdButton = document.createElement('button');
+      const createdButton = tabContainer.createEl('button', {
+        cls: 'clickable-icon jvt-collapse-tab-bar-button',
+      });
       createdButton.type = 'button';
-      createdButton.className = 'clickable-icon jvt-collapse-tab-bar-button';
       createdButton.addEventListener('click', this.collapseButtonClickHandler);
       button = createdButton;
     }
@@ -700,7 +701,7 @@ export default class JustVerticalTabsPlugin extends Plugin {
   }
 
   private removeCollapseButton(): void {
-    const button = document.querySelector<HTMLElement>(COLLAPSE_BUTTON_SELECTOR);
+    const button = activeDocument.querySelector<HTMLElement>(COLLAPSE_BUTTON_SELECTOR);
     if (button) {
       button.removeEventListener('click', this.collapseButtonClickHandler);
       button.remove();
@@ -709,8 +710,8 @@ export default class JustVerticalTabsPlugin extends Plugin {
 
   /** Place the right sidebar toggle in the active note header after More options. */
   private moveToggleToHeader(): void {
-    const toggle = document.querySelector<HTMLElement>(TOGGLE_SELECTOR);
-    const viewActions = document.querySelector<HTMLElement>(VIEW_ACTIONS_SELECTOR);
+    const toggle = activeDocument.querySelector<HTMLElement>(TOGGLE_SELECTOR);
+    const viewActions = activeDocument.querySelector<HTMLElement>(VIEW_ACTIONS_SELECTOR);
 
     if (!toggle || !viewActions) {
       return;
@@ -741,8 +742,8 @@ export default class JustVerticalTabsPlugin extends Plugin {
 
   /** Move the sidebar toggle button back into the tab header container. */
   private restoreToggle(): void {
-    const toggle = document.querySelector<HTMLElement>(TOGGLE_SELECTOR);
-    const tabContainer = document.querySelector<HTMLElement>(TAB_HEADER_CONTAINER_SELECTOR);
+    const toggle = activeDocument.querySelector<HTMLElement>(TOGGLE_SELECTOR);
+    const tabContainer = activeDocument.querySelector<HTMLElement>(TAB_HEADER_CONTAINER_SELECTOR);
 
     if (!toggle || !tabContainer || toggle.parentElement === tabContainer) {
       return;
