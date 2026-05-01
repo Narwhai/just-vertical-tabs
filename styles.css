@@ -77,7 +77,7 @@ body.jvt-active .mod-root .workspace-tab-header-inner-title {
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
   text-align: left !important;
-  font-size: var(--font-ui-small) !important;
+  font-size: var(--font-ui-small);
 }
 
 body.jvt-active .mod-root .workspace-tab-header-inner-icon {
@@ -87,8 +87,8 @@ body.jvt-active .mod-root .workspace-tab-header-inner-icon {
 }
 
 body.jvt-active .mod-root .workspace-tab-header-inner-icon svg {
-  width: 14px !important;
-  height: 14px !important;
+  width: 14px;
+  height: 14px;
 }
 
 body.jvt-active.jvt-hide-tab-icons .mod-root .workspace-tab-header-inner {
@@ -141,31 +141,31 @@ body.jvt-active .mod-root .workspace-tab-header-spacer {
 }
 
 body.jvt-active .mod-root .workspace-tab-header-container > .jvt-collapse-tab-bar-button {
-  width: 100% !important;
-  display: flex !important;
-  justify-content: center !important;
-  align-items: center !important;
-  padding: 2px 0 !important;
-  margin: 0 !important;
-  border: none !important;
-  border-radius: var(--radius-s) !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  color: var(--icon-color) !important;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2px 0;
+  margin: 0;
+  border: none;
+  border-radius: var(--radius-s);
+  background: transparent;
+  box-shadow: none;
+  color: var(--icon-color);
 }
 
 body.jvt-active .mod-root .workspace-tab-header-container > .jvt-collapse-tab-bar-button:hover {
-  background-color: var(--background-modifier-hover) !important;
-  color: var(--icon-color-hover, var(--icon-color)) !important;
+  background-color: var(--background-modifier-hover);
+  color: var(--icon-color-hover, var(--icon-color));
 }
 
 body.jvt-active .mod-root .workspace-tab-header-container > .jvt-collapse-tab-bar-button svg {
-  width: 14px !important;
-  height: 14px !important;
+  width: 14px;
+  height: 14px;
 }
 
 body.jvt-active.jvt-sidebar-toggle-bottom .mod-root .workspace-tab-header-container > .jvt-collapse-tab-bar-button {
-  margin-top: auto !important;
+  margin-top: auto;
 }
 
 body.jvt-active.jvt-sidebar-toggle-bottom .mod-root .workspace-tab-header-container > .sidebar-toggle-button.mod-right {
@@ -179,8 +179,8 @@ body.jvt-active.jvt-sidebar-toggle-bottom .mod-root .workspace-tab-header-contai
 }
 
 body.jvt-active.jvt-sidebar-toggle-bottom .mod-root .workspace-tab-header-container > .sidebar-toggle-button.mod-right .clickable-icon svg {
-  width: 14px !important;
-  height: 14px !important;
+  width: 14px;
+  height: 14px;
 }
 
 body.jvt-active.jvt-sidebar-toggle-bottom.jvt-side-right .mod-root .workspace-tab-header-container > .sidebar-toggle-button.mod-right {
@@ -257,7 +257,7 @@ body.jvt-active.jvt-collapse-tab-bar.jvt-hide-tab-icons .mod-root .workspace-tab
   align-items: center !important;
   justify-content: center !important;
   min-width: 1.25rem !important;
-  font-size: var(--font-ui-small) !important;
+  font-size: var(--font-ui-small);
   font-weight: 600 !important;
   letter-spacing: 0.02em;
   text-transform: uppercase;
