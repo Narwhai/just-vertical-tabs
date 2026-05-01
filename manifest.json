@@ -1,7 +1,7 @@
 {
   "id": "just-vertical-tabs",
   "name": "Just Vertical Tabs",
-  "version": "1.1.0",
+  "version": "1.0.0",
   "minAppVersion": "1.5.0",
   "description": "Moves the tab bar from the top to a vertical orientation on the left or right side of the editor pane.",
   "author": "Roman Soriano",
