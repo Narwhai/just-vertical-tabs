@@ -23,5 +23,5 @@
     "jiti": "2.6.1",
     "obsidian": "latest",
     "eslint-plugin-obsidianmd": "^0.2.5"
-  },
+  }
 }
