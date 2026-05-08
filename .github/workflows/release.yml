@@ -40,9 +40,6 @@ jobs:
             main.js
             styles.css
 
-      - name: Create release zip
-        run: zip pinned-tab-utils.zip main.js manifest.json styles.css
-
       - name: Determine release tag
         id: vars
         run: |
@@ -59,4 +56,4 @@ jobs:
           gh release create "${{ steps.vars.outputs.tag }}" \
             --title "${{ steps.vars.outputs.tag }}" \
             --generate-notes \
-            main.js manifest.json styles.css pinned-tab-utils.zip
+            main.js manifest.json styles.css
