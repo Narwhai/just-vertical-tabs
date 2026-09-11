@@ -1,4 +1,5 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab } from 'obsidian';
+import type { SettingDefinitionItem } from 'obsidian';
 import JustVerticalTabsPlugin from './main';
 
 export type TabBarSide = 'left' | 'right';
@@ -28,73 +29,86 @@ export class JustVerticalTabsSettingTab extends PluginSettingTab {
     this.plugin = plugin;
   }
 
-  display(): void {
-    const { containerEl } = this;
+  getSettingDefinitions(): SettingDefinitionItem[] {
+    return [
+      {
+        name: 'Tab bar side',
+        desc: 'Choose whether the vertical tab bar appears on the left or right side of the editor pane.',
+        control: {
+          type: 'dropdown',
+          key: 'side',
+          defaultValue: DEFAULT_SETTINGS.side,
+          options: { left: 'Left', right: 'Right' },
+        },
+      },
+      {
+        name: 'Right sidebar toggle placement',
+        desc: "Choose whether the right sidebar toggle stays in Obsidian's default location, moves into the note header after more options, or appears at the bottom of the vertical tab bar.",
+        control: {
+          type: 'dropdown',
+          key: 'sidebarTogglePlacement',
+          defaultValue: DEFAULT_SETTINGS.sidebarTogglePlacement,
+          options: {
+            default: 'Default',
+            header: 'Note header',
+            bottom: 'Bottom of vertical tabs',
+          },
+        },
+      },
+      {
+        name: 'Show tab icons',
+        desc: 'Show or hide the file-type icons displayed to the left of tab titles.',
+        control: { type: 'toggle', key: 'showTabIcons' },
+      },
+      {
+        name: 'Collapse tab bar',
+        desc: 'Collapse the vertical tab bar so each tab shows only its icon, or title initials when tab icons are hidden. You can also toggle this from the command palette.',
+        control: { type: 'toggle', key: 'collapseTabBar' },
+      },
+      {
+        name: 'Show collapse button',
+        desc: 'Show or hide the collapse/expand button that appears above the right sidebar toggle in the vertical tab bar.',
+        control: { type: 'toggle', key: 'showCollapseTabBarButton' },
+      },
+    ];
+  }
 
-    containerEl.empty();
+  /**
+   * Routes every write through `plugin.saveSettings()` so `applySettings()`
+   * (body classes, toggle placement, collapsed-label sync) runs after each
+   * change. The default implementation only calls `saveData()`.
+   */
+  async setControlValue(key: string, value: unknown): Promise<void> {
+    if (key === 'side' && typeof value === 'string') {
+      await this.plugin.updateSide(value);
+      return;
+    }
 
-    new Setting(containerEl)
-      .setName('Tab bar side')
-      .setDesc('Choose whether the vertical tab bar appears on the left or right side of the editor pane.')
-      .addDropdown((dropdown) => {
-        dropdown
-          .addOption('left', 'Left')
-          .addOption('right', 'Right')
-          .setValue(this.plugin.settings.side)
-          .onChange(async (value) => {
-            await this.plugin.updateSide(value);
-          });
-      });
+    if (key === 'sidebarTogglePlacement' && typeof value === 'string') {
+      this.plugin.settings.sidebarTogglePlacement =
+        this.plugin.normalizeSidebarTogglePlacementValue(value);
+      await this.plugin.saveSettings();
+      return;
+    }
 
-    new Setting(containerEl)
-      .setName('Right sidebar toggle placement')
-      .setDesc('Choose whether the right sidebar toggle stays in Obsidian\'s default location, moves into the note header after more options, or appears at the bottom of the vertical tab bar.')
-      .addDropdown((dropdown) => {
-        dropdown
-          .addOption('default', 'Default')
-          .addOption('header', 'Note header')
-          .addOption('bottom', 'Bottom of vertical tabs')
-          .setValue(this.plugin.settings.sidebarTogglePlacement)
-          .onChange(async (value) => {
-            this.plugin.settings.sidebarTogglePlacement = this.plugin.normalizeSidebarTogglePlacementValue(value);
-            await this.plugin.saveSettings();
-          });
-      });
+    if (key === 'showTabIcons' && typeof value === 'boolean') {
+      this.plugin.settings.showTabIcons = value;
+      await this.plugin.saveSettings();
+      return;
+    }
 
-    new Setting(containerEl)
-      .setName('Show tab icons')
-      .setDesc('Show or hide the file-type icons displayed to the left of tab titles.')
-      .addToggle((toggle) => {
-        toggle
-          .setValue(this.plugin.settings.showTabIcons)
-          .onChange(async (value) => {
-            this.plugin.settings.showTabIcons = value;
-            await this.plugin.saveSettings();
-          });
-      });
+    if (key === 'collapseTabBar' && typeof value === 'boolean') {
+      this.plugin.settings.collapseTabBar = value;
+      await this.plugin.saveSettings();
+      return;
+    }
 
-    new Setting(containerEl)
-      .setName('Collapse tab bar')
-      .setDesc('Collapse the vertical tab bar so each tab shows only its icon, or title initials when tab icons are hidden. You can also toggle this from the command palette.')
-      .addToggle((toggle) => {
-        toggle
-          .setValue(this.plugin.settings.collapseTabBar)
-          .onChange(async (value) => {
-            this.plugin.settings.collapseTabBar = value;
-            await this.plugin.saveSettings();
-          });
-      });
+    if (key === 'showCollapseTabBarButton' && typeof value === 'boolean') {
+      this.plugin.settings.showCollapseTabBarButton = value;
+      await this.plugin.saveSettings();
+      return;
+    }
 
-    new Setting(containerEl)
-      .setName('Show collapse button')
-      .setDesc('Show or hide the collapse/expand button that appears above the right sidebar toggle in the vertical tab bar.')
-      .addToggle((toggle) => {
-        toggle
-          .setValue(this.plugin.settings.showCollapseTabBarButton)
-          .onChange(async (value) => {
-            this.plugin.settings.showCollapseTabBarButton = value;
-            await this.plugin.saveSettings();
-          });
-      });
+    throw new Error(`Unexpected settings control: ${key}`);
   }
 }
