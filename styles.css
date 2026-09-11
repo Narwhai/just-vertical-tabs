@@ -169,22 +169,34 @@ body.jvt-active .mod-root .workspace-tab-header-container > .jvt-right-sidebar-t
   height: 14px;
 }
 
-/* Obsidian may move or clone its toggle during sidebar animations. Hide both;
-   the plugin-owned control never participates in that animation/reparenting. */
+/* Hide native controls and their animated clones only while custom controls
+   are available. Obsidian retains ownership of each native button. */
 body.jvt-active.jvt-custom-sidebar-toggle .sidebar-toggle-button.mod-secondary,
 body.jvt-active.jvt-custom-sidebar-toggle .sidebar-toggle-button.mod-right:not(.mod-primary) {
   display: none !important;
 }
 
-body.jvt-active .jvt-right-sidebar-toggle {
+body.jvt-active.jvt-custom-left-sidebar-toggle .sidebar-toggle-button.mod-primary,
+body.jvt-active.jvt-custom-left-sidebar-toggle .sidebar-toggle-button.mod-left:not(.mod-secondary) {
+  display: none !important;
+}
+
+body.jvt-active .jvt-right-sidebar-toggle,
+body.jvt-active .jvt-left-sidebar-toggle {
   flex-shrink: 0;
   -webkit-app-region: no-drag;
   animation: none;
   transition: none;
 }
 
+body.jvt-active .view-header > .jvt-left-sidebar-toggle {
+  --icon-size: var(--icon-s);
+  align-self: center;
+}
+
 body.jvt-active .jvt-collapse-tab-bar-button:focus-visible,
-body.jvt-active .jvt-right-sidebar-toggle:focus-visible {
+body.jvt-active .jvt-right-sidebar-toggle:focus-visible,
+body.jvt-active .jvt-left-sidebar-toggle:focus-visible {
   outline: 2px solid var(--interactive-accent);
   outline-offset: -2px;
 }

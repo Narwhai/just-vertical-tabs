@@ -8,6 +8,7 @@ Enables you to have note tabs aligned vertically instead of horizontally.
 
 - Vertical Tabs 
 - Orient tab bar on the left, or the right
+- Stable left-sidebar button at the top-left of the active note header, before navigation; the native control remains available when the header is hidden
 - Right-sidebar toggle placement options: native, note header, or bottom of the vertical tab bar (custom buttons stay in place when toggled)
 - Optional tab icons toggle
 - Command + setting to collapse the tab bar down to icons, or title initials when icons are hidden

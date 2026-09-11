@@ -91,8 +91,9 @@ export default class JustVerticalTabsPlugin extends Plugin {
     void this.toggleCollapseTabBar();
   };
 
-  /** Separate from Obsidian's toggle, which the workspace reparents and animates. */
+  /** Separate from Obsidian's toggles, which the workspace reparents and animates. */
   private sidebarToggleButton: HTMLButtonElement | null = null;
+  private leftSidebarToggleButton: HTMLButtonElement | null = null;
 
   /** Debounced collapsed-label sync (16 ms, leading). */
   private readonly debouncedCollapsedLabelSync: Debouncer<[], void> = debounce(
@@ -139,6 +140,7 @@ export default class JustVerticalTabsPlugin extends Plugin {
       let showViewHeader = body.classList.contains('show-view-header');
       const observer = new MutationObserver(() => {
         this.updateSidebarToggleButton();
+        this.updateLeftSidebarToggleButton();
         const headerShown = body.classList.contains('show-view-header');
         if (headerShown !== showViewHeader) {
           showViewHeader = headerShown;
@@ -161,6 +163,7 @@ export default class JustVerticalTabsPlugin extends Plugin {
       this.app.workspace.on('css-change', () => this.applyTogglePlacement())
     );
     this.register(() => this.removeSidebarToggleButton());
+    this.register(() => this.removeLeftSidebarToggleButton());
 
     this.registerEvent(
       this.app.workspace.on('layout-change', () => {
@@ -648,6 +651,7 @@ export default class JustVerticalTabsPlugin extends Plugin {
       return;
     }
 
+    this.placeLeftSidebarToggleButton();
     this.placeSidebarToggleButton();
 
     if (!this.settings.showCollapseTabBarButton) {
@@ -718,6 +722,57 @@ export default class JustVerticalTabsPlugin extends Plugin {
       button.removeEventListener('click', this.collapseButtonClickHandler);
       button.remove();
     }
+  }
+
+  /** Place the left control before navigation without moving Obsidian's button. */
+  private placeLeftSidebarToggleButton(): void {
+    const { workspace } = this.app;
+    const header = workspace.getMostRecentLeaf(workspace.rootSplit)?.view.containerEl
+      .querySelector<HTMLElement>('.view-header');
+    if (!header?.isShown()) {
+      this.removeLeftSidebarToggleButton();
+      return;
+    }
+
+    if (!this.leftSidebarToggleButton) {
+      this.leftSidebarToggleButton = header.createEl('button', {
+        cls: 'clickable-icon jvt-left-sidebar-toggle',
+        attr: { type: 'button' },
+      });
+      this.registerDomEvent(this.leftSidebarToggleButton, 'mousedown', (event) => event.preventDefault());
+      this.registerDomEvent(this.leftSidebarToggleButton, 'click', () => {
+        workspace.leftSplit.toggle();
+        this.updateLeftSidebarToggleButton();
+      });
+    }
+
+    const button = this.leftSidebarToggleButton;
+    if (header.firstElementChild !== button) {
+      header.prepend(button);
+    }
+
+    workspace.containerEl.ownerDocument.body.classList.add('jvt-custom-left-sidebar-toggle');
+    this.updateLeftSidebarToggleButton();
+  }
+
+  private updateLeftSidebarToggleButton(): void {
+    const button = this.leftSidebarToggleButton;
+    if (!button?.isConnected) {
+      return;
+    }
+
+    const collapsed = this.app.workspace.leftSplit.collapsed;
+    setTooltip(button, collapsed ? 'Expand left sidebar' : 'Collapse left sidebar', { placement: 'bottom' });
+    const expanded = String(!collapsed);
+    if (button.getAttribute('aria-expanded') !== expanded) {
+      button.setAttribute('aria-expanded', expanded);
+      setIcon(button, collapsed ? 'panel-left-open' : 'panel-left-close');
+    }
+  }
+
+  private removeLeftSidebarToggleButton(): void {
+    this.leftSidebarToggleButton?.remove();
+    this.app.workspace.containerEl.ownerDocument.body.classList.remove('jvt-custom-left-sidebar-toggle');
   }
 
   /** Leave native controls under Obsidian's ownership, including in default mode. */
