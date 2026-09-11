@@ -1,4 +1,4 @@
-import { Plugin, debounce, setIcon, type Debouncer } from 'obsidian';
+import { Plugin, debounce, setIcon, setTooltip, type Debouncer } from 'obsidian';
 import {
   DEFAULT_SETTINGS,
   JustVerticalTabsSettingTab,
@@ -9,8 +9,7 @@ import {
 
 const TAB_HEADER_CONTAINER_SELECTOR = '.mod-root .workspace-tab-header-container';
 const TAB_HEADER_INNER_SELECTOR = '.mod-root .workspace-tab-header-inner';
-const VIEW_ACTIONS_SELECTOR = '.mod-root .workspace-leaf.mod-active .view-actions';
-const TOGGLE_SELECTOR = '.sidebar-toggle-button.mod-right';
+const VIEW_ACTIONS_SELECTOR = '.view-actions';
 const COLLAPSE_BUTTON_SELECTOR = '.jvt-collapse-tab-bar-button';
 
 /** Throttle interval for dragover position tracking (ms). */
@@ -92,17 +91,8 @@ export default class JustVerticalTabsPlugin extends Plugin {
     void this.toggleCollapseTabBar();
   };
 
-  /**
-   * Debounced trailing-edge toggle placement — catches sidebar animations
-   * that settle after the initial call. 500 ms covers Obsidian animations.
-   * Always pair with a direct `applyTogglePlacement()` call for immediate
-   * feedback via {@link scheduleTogglePlacement}.
-   */
-  private readonly debouncedTogglePlacement: Debouncer<[], void> = debounce(
-    () => this.applyTogglePlacement(),
-    500,
-    true,
-  );
+  /** Separate from Obsidian's toggle, which the workspace reparents and animates. */
+  private sidebarToggleButton: HTMLButtonElement | null = null;
 
   /** Debounced collapsed-label sync (16 ms, leading). */
   private readonly debouncedCollapsedLabelSync: Debouncer<[], void> = debounce(
@@ -121,7 +111,7 @@ export default class JustVerticalTabsPlugin extends Plugin {
   async onload(): Promise<void> {
     await this.loadSettings();
 
-    activeDocument.body.classList.add('jvt-active');
+    this.app.workspace.containerEl.ownerDocument.body.classList.add('jvt-active');
     this.isVerticalActive = true;
     this.applySettings();
 
@@ -138,19 +128,39 @@ export default class JustVerticalTabsPlugin extends Plugin {
     this.patchWorkspaceDragBehavior();
     this.debouncedCollapsedLabelSync();
 
-    this.registerDomEvent(activeDocument, 'click', (event) => {
-      const target = event.target as HTMLElement | null;
-      if (target?.closest(TOGGLE_SELECTOR)) {
-        this.scheduleTogglePlacement();
+    this.app.workspace.onLayoutReady(() => {
+      if (!this.isVerticalActive) {
+        return;
       }
+
+      // Sidebar state changes also come from hotkeys and other plugins.
+      // Header visibility is a body-class change, not a workspace layout event.
+      const body = this.app.workspace.containerEl.ownerDocument.body;
+      let showViewHeader = body.classList.contains('show-view-header');
+      const observer = new MutationObserver(() => {
+        this.updateSidebarToggleButton();
+        const headerShown = body.classList.contains('show-view-header');
+        if (headerShown !== showViewHeader) {
+          showViewHeader = headerShown;
+          this.applyTogglePlacement();
+        }
+      });
+      observer.observe(this.app.workspace.containerEl, {
+        attributes: true,
+        attributeFilter: ['class'],
+      });
+      observer.observe(body, { attributes: true, attributeFilter: ['class'] });
+      this.register(() => observer.disconnect());
+      this.handleLayoutChange();
     });
 
-    this.registerDomEvent(activeDocument, 'transitionend', (event) => {
-      const target = event.target as HTMLElement | null;
-      if (target?.closest('.workspace-split.mod-right-split')) {
-        this.scheduleTogglePlacement();
-      }
-    });
+    this.registerEvent(
+      this.app.workspace.on('active-leaf-change', () => this.applyTogglePlacement())
+    );
+    this.registerEvent(
+      this.app.workspace.on('css-change', () => this.applyTogglePlacement())
+    );
+    this.register(() => this.removeSidebarToggleButton());
 
     this.registerEvent(
       this.app.workspace.on('layout-change', () => {
@@ -159,7 +169,6 @@ export default class JustVerticalTabsPlugin extends Plugin {
     );
 
     // Cancel all debouncers on unload.
-    this.register(() => this.debouncedTogglePlacement.cancel());
     this.register(() => this.debouncedCollapsedLabelSync.cancel());
     this.register(() => this.debouncedLayoutChange.cancel());
   }
@@ -170,9 +179,8 @@ export default class JustVerticalTabsPlugin extends Plugin {
     this.lastDragPosition = null;
     this.isVerticalActive = false;
 
-    this.restoreToggle();
     this.removeCollapseButton();
-    activeDocument.body.classList.remove(
+    this.app.workspace.containerEl.ownerDocument.body.classList.remove(
       'jvt-active',
       'jvt-collapse-tab-bar',
       'jvt-hide-tab-icons',
@@ -244,18 +252,23 @@ export default class JustVerticalTabsPlugin extends Plugin {
   }
 
   private applySettings(): void {
-    activeDocument.body.classList.remove('jvt-side-left', 'jvt-side-right');
-    activeDocument.body.classList.add(`jvt-side-${this.settings.side}`);
-    activeDocument.body.classList.toggle('jvt-collapse-tab-bar', this.settings.collapseTabBar);
-    activeDocument.body.classList.toggle('jvt-hide-tab-icons', !this.settings.showTabIcons);
-    activeDocument.body.classList.toggle(
+    if (!this.isVerticalActive) {
+      return;
+    }
+
+    const body = this.app.workspace.containerEl.ownerDocument.body;
+    body.classList.remove('jvt-side-left', 'jvt-side-right');
+    body.classList.add(`jvt-side-${this.settings.side}`);
+    body.classList.toggle('jvt-collapse-tab-bar', this.settings.collapseTabBar);
+    body.classList.toggle('jvt-hide-tab-icons', !this.settings.showTabIcons);
+    body.classList.toggle(
       'jvt-sidebar-toggle-bottom',
       this.settings.sidebarTogglePlacement === 'bottom'
     );
 
-    this.isVerticalActive = activeDocument.body.classList.contains('jvt-active');
+    this.isVerticalActive = body.classList.contains('jvt-active');
 
-    this.scheduleTogglePlacement();
+    this.applyTogglePlacement();
     this.debouncedCollapsedLabelSync();
   }
 
@@ -263,17 +276,8 @@ export default class JustVerticalTabsPlugin extends Plugin {
   private handleLayoutChange(): void {
     this.ensureTabLabelObserver();
     this.patchWorkspaceDragBehavior();
-    this.scheduleTogglePlacement();
-    this.debouncedCollapsedLabelSync();
-  }
-
-  /**
-   * Apply toggle placement immediately (leading edge) and schedule a
-   * debounced trailing call to catch animations that settle later.
-   */
-  private scheduleTogglePlacement(): void {
     this.applyTogglePlacement();
-    this.debouncedTogglePlacement();
+    this.debouncedCollapsedLabelSync();
   }
 
   private registerDragTracking(): void {
@@ -640,31 +644,29 @@ export default class JustVerticalTabsPlugin extends Plugin {
   }
 
   private applyTogglePlacement(): void {
-    if (
-      this.settings.sidebarTogglePlacement === 'header'
-      || !this.settings.showCollapseTabBarButton
-    ) {
-      this.removeCollapseButton();
-      if (this.settings.sidebarTogglePlacement === 'header') {
-        this.moveToggleToHeader();
-      }
+    if (!this.isVerticalActive) {
       return;
     }
 
-    this.restoreToggle();
+    this.placeSidebarToggleButton();
+
+    if (!this.settings.showCollapseTabBarButton) {
+      this.removeCollapseButton();
+      return;
+    }
+
     this.ensureCollapseButton();
   }
 
   private ensureCollapseButton(): void {
-    const tabContainer = activeDocument.querySelector<HTMLElement>(TAB_HEADER_CONTAINER_SELECTOR);
-    const toggle = activeDocument.querySelector<HTMLElement>(TOGGLE_SELECTOR);
+    const tabContainer = this.app.workspace.containerEl.querySelector<HTMLElement>(TAB_HEADER_CONTAINER_SELECTOR);
 
-    if (!tabContainer || !toggle || toggle.parentElement !== tabContainer) {
+    if (!tabContainer) {
       this.removeCollapseButton();
       return;
     }
 
-    let button = tabContainer.querySelector<HTMLButtonElement>(COLLAPSE_BUTTON_SELECTOR);
+    let button = this.app.workspace.containerEl.querySelector<HTMLButtonElement>(COLLAPSE_BUTTON_SELECTOR);
     if (!button) {
       const createdButton = tabContainer.createEl('button', {
         cls: 'clickable-icon jvt-collapse-tab-bar-button',
@@ -676,20 +678,30 @@ export default class JustVerticalTabsPlugin extends Plugin {
 
     this.updateCollapseButton(button);
 
-    if (button.parentElement !== tabContainer || button.nextElementSibling !== toggle) {
-      tabContainer.insertBefore(button, toggle);
+    const toggle = this.sidebarToggleButton;
+    if (toggle?.parentElement === tabContainer) {
+      if (button.parentElement !== tabContainer || button.nextElementSibling !== toggle) {
+        tabContainer.insertBefore(button, toggle);
+      }
+    } else if (button.parentElement !== tabContainer) {
+      tabContainer.appendChild(button);
     }
   }
 
   private updateCollapseButton(button: HTMLElement): void {
     const actionLabel = this.settings.collapseTabBar ? 'Expand tab bar' : 'Collapse tab bar';
 
-    button.setAttribute('aria-label', actionLabel);
-    button.setAttribute('title', actionLabel);
-    button.setAttribute('data-tooltip-position', this.settings.side === 'right' ? 'left' : 'right');
+    setTooltip(button, actionLabel, {
+      placement: this.settings.side === 'right' ? 'left' : 'right',
+    });
+    button.setAttribute('aria-expanded', String(!this.settings.collapseTabBar));
     button.classList.toggle('is-collapsed', this.settings.collapseTabBar);
 
-    setIcon(button, this.getCollapseButtonIcon());
+    const icon = this.getCollapseButtonIcon();
+    if (button.dataset.jvtIcon !== icon) {
+      setIcon(button, icon);
+      button.dataset.jvtIcon = icon;
+    }
   }
 
   private getCollapseButtonIcon(): string {
@@ -701,54 +713,87 @@ export default class JustVerticalTabsPlugin extends Plugin {
   }
 
   private removeCollapseButton(): void {
-    const button = activeDocument.querySelector<HTMLElement>(COLLAPSE_BUTTON_SELECTOR);
+    const button = this.app.workspace.containerEl.querySelector<HTMLElement>(COLLAPSE_BUTTON_SELECTOR);
     if (button) {
       button.removeEventListener('click', this.collapseButtonClickHandler);
       button.remove();
     }
   }
 
-  /** Place the right sidebar toggle in the active note header after More options. */
-  private moveToggleToHeader(): void {
-    const toggle = activeDocument.querySelector<HTMLElement>(TOGGLE_SELECTOR);
-    const viewActions = activeDocument.querySelector<HTMLElement>(VIEW_ACTIONS_SELECTOR);
-
-    if (!toggle || !viewActions) {
+  /** Leave native controls under Obsidian's ownership, including in default mode. */
+  private placeSidebarToggleButton(): void {
+    const { workspace } = this.app;
+    const placement = this.settings.sidebarTogglePlacement;
+    if (placement === 'default') {
+      this.removeSidebarToggleButton();
       return;
     }
 
-    const moreOptionsButton = Array.from(viewActions.children).find((child) =>
-      child.querySelector?.('.lucide-more-vertical')
-    );
+    const host = placement === 'header'
+      ? workspace.getMostRecentLeaf(workspace.rootSplit)?.view.containerEl
+        .querySelector<HTMLElement>(VIEW_ACTIONS_SELECTOR)
+      : workspace.containerEl.querySelector<HTMLElement>(TAB_HEADER_CONTAINER_SELECTOR);
 
-    if (moreOptionsButton) {
-      if (
-        toggle.parentElement === viewActions
-        && moreOptionsButton.nextElementSibling === toggle
-      ) {
-        return;
+    // Keep the native control available if there is no visible custom location.
+    if (!host?.isShown()) {
+      this.removeSidebarToggleButton();
+      return;
+    }
+
+    if (!this.sidebarToggleButton) {
+      this.sidebarToggleButton = host.createEl('button', {
+        cls: 'clickable-icon jvt-right-sidebar-toggle',
+        attr: { type: 'button' },
+      });
+      this.registerDomEvent(this.sidebarToggleButton, 'mousedown', (event) => event.preventDefault());
+      this.registerDomEvent(this.sidebarToggleButton, 'click', () => {
+        workspace.rightSplit.toggle();
+        this.updateSidebarToggleButton();
+      });
+    }
+
+    const button = this.sidebarToggleButton;
+    const moreOptions = placement === 'header'
+      ? Array.from(host.children).find((child) => child.querySelector('.lucide-more-vertical'))
+      : null;
+    if (moreOptions) {
+      if (button.parentElement !== host || moreOptions.nextElementSibling !== button) {
+        host.insertBefore(button, moreOptions.nextSibling);
       }
-
-      viewActions.insertBefore(toggle, moreOptionsButton.nextSibling);
-      return;
+    } else if (button.parentElement !== host) {
+      host.appendChild(button);
     }
 
-    if (toggle.parentElement === viewActions && viewActions.lastElementChild === toggle) {
-      return;
-    }
-
-    viewActions.appendChild(toggle);
+    workspace.containerEl.ownerDocument.body.classList.add('jvt-custom-sidebar-toggle');
+    this.updateSidebarToggleButton();
   }
 
-  /** Move the sidebar toggle button back into the tab header container. */
-  private restoreToggle(): void {
-    const toggle = activeDocument.querySelector<HTMLElement>(TOGGLE_SELECTOR);
-    const tabContainer = activeDocument.querySelector<HTMLElement>(TAB_HEADER_CONTAINER_SELECTOR);
-
-    if (!toggle || !tabContainer || toggle.parentElement === tabContainer) {
+  private updateSidebarToggleButton(): void {
+    const button = this.sidebarToggleButton;
+    if (!button?.isConnected) {
       return;
     }
 
-    tabContainer.appendChild(toggle);
+    const collapsed = this.app.workspace.rightSplit.collapsed;
+    if (this.settings.sidebarTogglePlacement === 'header') {
+      // setTooltip's bottom placement does not clear an earlier side placement.
+      button.removeAttribute('data-tooltip-position');
+    }
+    setTooltip(button, collapsed ? 'Expand right sidebar' : 'Collapse right sidebar', {
+      placement: this.settings.sidebarTogglePlacement === 'header'
+        ? 'bottom'
+        : this.settings.side === 'right' ? 'left' : 'right',
+    });
+    const expanded = String(!collapsed);
+    if (button.getAttribute('aria-expanded') !== expanded) {
+      button.setAttribute('aria-expanded', expanded);
+      setIcon(button, collapsed ? 'panel-right-open' : 'panel-right-close');
+    }
+  }
+
+  private removeSidebarToggleButton(): void {
+    // Retain the button/listener for reuse when settings or the active view change.
+    this.sidebarToggleButton?.remove();
+    this.app.workspace.containerEl.ownerDocument.body.classList.remove('jvt-custom-sidebar-toggle');
   }
 }

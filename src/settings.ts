@@ -43,7 +43,7 @@ export class JustVerticalTabsSettingTab extends PluginSettingTab {
       },
       {
         name: 'Right sidebar toggle placement',
-        desc: "Choose whether the right sidebar toggle stays in Obsidian's default location, moves into the note header after more options, or appears at the bottom of the vertical tab bar.",
+        desc: "Use Obsidian's native toggle, or a stationary button in the note header after more options or at the bottom of the vertical tab bar.",
         control: {
           type: 'dropdown',
           key: 'sidebarTogglePlacement',
@@ -67,7 +67,7 @@ export class JustVerticalTabsSettingTab extends PluginSettingTab {
       },
       {
         name: 'Show collapse button',
-        desc: 'Show or hide the collapse/expand button that appears above the right sidebar toggle in the vertical tab bar.',
+        desc: 'Show or hide the tab bar collapse/expand button, independently of the right sidebar toggle placement.',
         control: { type: 'toggle', key: 'showCollapseTabBarButton' },
       },
     ];
