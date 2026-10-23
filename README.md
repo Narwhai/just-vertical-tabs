@@ -12,7 +12,7 @@ Enables you to have note tabs aligned vertically instead of horizontally.
 - Right-sidebar toggle placement options: native, note header, or bottom of the vertical tab bar (custom buttons stay in place when toggled)
 - Optional tab icons toggle
 - Command + setting to collapse the tab bar down to icons, or title initials when icons are hidden
-- Independent collapse/expand button in the vertical tab bar, above the sidebar button when both are at the bottom
+- Independent collapse/expand button pinned to the bottom of the vertical tab bar in every placement, directly above the sidebar button when both are at the bottom
 - Optional toggle to hide/show the collapse/expand button
 
 ## Installation

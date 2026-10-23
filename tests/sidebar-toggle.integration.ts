@@ -108,6 +108,9 @@ export async function runSidebarToggleTests(
           check(host && host.matches('.workspace-tab-header-container'), 'Bottom button is not in the tab bar.');
           check(Boolean(host.querySelector('.jvt-collapse-tab-bar-button')) === showCollapseTabBarButton,
             'Tab-bar collapse visibility must be independent of sidebar controls.');
+          const bottomCollapse = host.querySelector<HTMLElement>('.jvt-collapse-tab-bar-button');
+          check(!bottomCollapse || bottomCollapse.nextElementSibling === button,
+            'Collapse button must sit directly above the bottom sidebar toggle.');
           const hostStyles = win.getComputedStyle(host);
           const buttonStyles = win.getComputedStyle(button);
           const bottomSpace = host.getBoundingClientRect().bottom - button.getBoundingClientRect().bottom;
@@ -151,7 +154,14 @@ export async function runSidebarToggleTests(
     const moreOptions = Array.from(originalActions.children).find((el) => el.querySelector('.lucide-more-vertical'));
     check(moreOptions?.nextElementSibling === headerButton, 'Header button must follow More options, not all actions.');
     check(!headerButton.hasAttribute('data-tooltip-position'), 'Header tooltip must not retain sideways placement.');
-    check(doc.querySelector('.jvt-collapse-tab-bar-button'), 'Header placement must not remove the tab-bar collapse button.');
+    const headerCollapse = doc.querySelector<HTMLElement>('.jvt-collapse-tab-bar-button');
+    check(headerCollapse, 'Header placement must not remove the tab-bar collapse button.');
+    const collapseHost = headerCollapse.parentElement;
+    check(collapseHost, 'Collapse button must stay attached to the vertical tab bar.');
+    const collapseBottom = collapseHost.getBoundingClientRect().bottom
+      - headerCollapse.getBoundingClientRect().bottom;
+    check(Math.abs(collapseBottom - parseFloat(win.getComputedStyle(collapseHost).paddingBottom)) < 1,
+      'Collapse button must be pinned to the bottom of the vertical tab bar in header placement.');
     const mouseDown = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
     check(!headerButton.dispatchEvent(mouseDown), 'Mouse activation should preserve editor focus.');
     const leftHeaderButton = customButton('left');

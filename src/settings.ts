@@ -15,7 +15,7 @@ export interface JustVerticalTabsSettings {
 
 export const DEFAULT_SETTINGS: JustVerticalTabsSettings = {
   side: 'right',
-  sidebarTogglePlacement: 'default',
+  sidebarTogglePlacement: 'header',
   showTabIcons: true,
   collapseTabBar: false,
   showCollapseTabBarButton: true,

@@ -201,7 +201,7 @@ body.jvt-active .jvt-left-sidebar-toggle:focus-visible {
   outline-offset: -2px;
 }
 
-body.jvt-active.jvt-sidebar-toggle-bottom .mod-root .workspace-tab-header-container > .jvt-collapse-tab-bar-button,
+body.jvt-active .mod-root .workspace-tab-header-container > .jvt-collapse-tab-bar-button,
 body.jvt-active.jvt-sidebar-toggle-bottom .mod-root .workspace-tab-header-container > .jvt-right-sidebar-toggle {
   margin-top: auto;
 }

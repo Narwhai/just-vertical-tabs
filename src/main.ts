@@ -251,7 +251,12 @@ export default class JustVerticalTabsPlugin extends Plugin {
       return 'bottom';
     }
 
-    return 'default';
+    if (placement === 'default') {
+      return 'default';
+    }
+
+    // Unknown or missing values fall back to the default placement.
+    return DEFAULT_SETTINGS.sidebarTogglePlacement;
   }
 
   private applySettings(): void {
